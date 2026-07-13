@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireEmployee, unauthorized } from "@/lib/api";
-import { addTimeOff, cancelTimeOff, employeeSnapshot } from "@/lib/demo-store";
+import { apiError, employeeToken, unauthorized } from "@/lib/api";
+import { cancelTimeOff, createTimeOff } from "@/lib/data/employee-repository";
 
 const schema = z.object({ type: z.enum(["UNPAID", "VACATION", "SICK", "OTHER"]), startDate: z.string().date(), endDate: z.string().date(), reason: z.string().min(3).max(500) });
 
 export async function POST(request: NextRequest) {
-  const employee = requireEmployee(request); if (!employee) return unauthorized();
-  try { addTimeOff(employee.id, schema.parse(await request.json())); return NextResponse.json(employeeSnapshot(employee.id)); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Request failed." }, { status: 400 }); }
+  const token = employeeToken(request); if (!token) return unauthorized();
+  try { return NextResponse.json(await createTimeOff(token, schema.parse(await request.json()))); }
+  catch (error) { return apiError(error, "Request failed."); }
 }
 
 export async function DELETE(request: NextRequest) {
-  const employee = requireEmployee(request); if (!employee) return unauthorized();
-  try { cancelTimeOff(employee.id, z.string().uuid().parse(new URL(request.url).searchParams.get("id"))); return NextResponse.json(employeeSnapshot(employee.id)); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Cancellation failed." }, { status: 400 }); }
+  const token = employeeToken(request); if (!token) return unauthorized();
+  try { return NextResponse.json(await cancelTimeOff(token, z.string().uuid().parse(new URL(request.url).searchParams.get("id")))); }
+  catch (error) { return apiError(error, "Cancellation failed."); }
 }

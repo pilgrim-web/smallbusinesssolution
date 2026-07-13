@@ -29,9 +29,9 @@ export default function EmployeeLogin() {
         <h1 id="login-title">Employee sign in</h1>
         <p className="muted">Use the details provided by your manager.</p>
         <form onSubmit={submit} className="form-stack">
-          <label>Company code<input name="companyCode" autoComplete="organization" defaultValue="HARBOR" required /></label>
-          <label>Employee number<input name="employeeNumber" inputMode="numeric" autoComplete="username" defaultValue="1042" required /></label>
-          <label>PIN<input name="pin" type="password" inputMode="numeric" autoComplete="current-password" defaultValue="2468" minLength={4} maxLength={10} required /></label>
+          <label>Company code<input name="companyCode" autoComplete="organization" required /></label>
+          <label>Employee number<input name="employeeNumber" inputMode="numeric" autoComplete="username" required /></label>
+          <label>PIN<input name="pin" type="password" inputMode="numeric" autoComplete="current-password" minLength={4} maxLength={10} required /></label>
           {error && <p className="alert error" role="alert">{error}</p>}
           <button className="button primary" disabled={busy}>{busy ? "Verifying…" : "Sign in securely"}</button>
         </form>

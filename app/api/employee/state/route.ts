@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireEmployee, unauthorized } from "@/lib/api";
-import { employeeSnapshot } from "@/lib/demo-store";
+import { apiError, employeeToken, unauthorized } from "@/lib/api";
+import { employeeSnapshot } from "@/lib/data/employee-repository";
 
 export async function GET(request: NextRequest) {
-  const employee = requireEmployee(request);
-  return employee ? NextResponse.json(employeeSnapshot(employee.id)) : unauthorized();
+  const token = employeeToken(request); if (!token) return unauthorized();
+  try { return NextResponse.json(await employeeSnapshot(token)); }
+  catch (error) { return apiError(error, "Unable to load employee time records."); }
 }

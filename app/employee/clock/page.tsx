@@ -17,7 +17,7 @@ export default function TimeClockPage() {
   const { data, setData, error, setError } = useEmployeeData();
   const [now, setNow] = useState(new Date()); const [busy, setBusy] = useState<ClockAction | null>(null); const [notice, setNotice] = useState("");
   useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
-  const timezone = data?.worksite.timezone ?? "America/Los_Angeles";
+  const timezone = data?.worksite?.timezone ?? "America/Los_Angeles";
   const liveTime = useMemo(() => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: timezone }).format(now), [now, timezone]);
   const valid = data ? allowedActions(data.state) : [];
 
@@ -35,6 +35,7 @@ export default function TimeClockPage() {
   async function act(action: ClockAction) {
     if (!data || busy) return; setBusy(action); setError(""); setNotice("");
     try {
+      if (!data.worksite) throw new Error("No active worksite is assigned. Contact your manager.");
       const needsLocation = action === "CLOCK_IN" || action === "CLOCK_OUT" || data.worksite.captureBreakLocation;
       if (needsLocation) setNotice("Checking your location for this one-time time clock event…");
       const location = needsLocation ? await getLocation() : { permissionStatus: "NOT_REQUESTED" as const };
@@ -45,6 +46,7 @@ export default function TimeClockPage() {
   }
 
   if (!data) return <div className="loading-card" role="status">{error || "Loading your time clock…"}</div>;
+  if (!data.worksite) return <div className="loading-card"><strong>No assigned worksite</strong><p>Ask your manager to assign an active worksite before recording time.</p></div>;
   const entry = data.openEntry; const activeBreak = entry?.breaks.find((item) => !item.endedAt);
   const activeUnpaidMinutes = activeBreak?.type === "UNPAID" ? Math.max(0, Math.floor((now.getTime() - new Date(activeBreak.startedAt).getTime()) / 60000)) : 0;
   const currentMinutes = entry ? Math.floor((now.getTime() - new Date(entry.clockInAt).getTime()) / 60000) - entry.durations.unpaidBreakMinutes - activeUnpaidMinutes : 0;

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireEmployee, unauthorized } from "@/lib/api";
-import { addCorrection } from "@/lib/demo-store";
+import { apiError, employeeToken, unauthorized } from "@/lib/api";
+import { createCorrection } from "@/lib/data/employee-repository";
 
 const schema = z.object({ timeEntryId: z.string().uuid(), requestedChange: z.string().min(3).max(500), reason: z.string().min(3).max(500) });
 export async function POST(request: NextRequest) {
-  const employee = requireEmployee(request); if (!employee) return unauthorized();
-  try { const input = schema.parse(await request.json()); return NextResponse.json(addCorrection(employee.id, input.timeEntryId, input.requestedChange, input.reason)); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Correction request failed." }, { status: 400 }); }
+  const token = employeeToken(request); if (!token) return unauthorized();
+  try { const input = schema.parse(await request.json()); return NextResponse.json(await createCorrection(token, input.timeEntryId, input.requestedChange, input.reason)); }
+  catch (error) { return apiError(error, "Correction request failed."); }
 }

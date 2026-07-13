@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireEmployee, unauthorized } from "@/lib/api";
-import { performAction } from "@/lib/demo-store";
+import { apiError, employeeToken, unauthorized } from "@/lib/api";
+import { performClockAction } from "@/lib/data/employee-repository";
 
 const schema = z.object({
   action: z.enum(["CLOCK_IN", "CLOCK_OUT", "BREAK_START", "BREAK_END"]),
@@ -15,12 +15,11 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const employee = requireEmployee(request);
-  if (!employee) return unauthorized();
+  const token = employeeToken(request); if (!token) return unauthorized();
   try {
     const input = schema.parse(await request.json());
-    return NextResponse.json(performAction({ ...input, employeeId: employee.id }));
+    return NextResponse.json(await performClockAction(token, input));
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "The time clock action failed." }, { status: 409 });
+    return apiError(error, "The time clock action failed.");
   }
 }
