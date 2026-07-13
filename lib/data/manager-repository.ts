@@ -1,0 +1,91 @@
+import "server-only";
+import { getAdminSupabase } from "@/lib/supabase/admin";
+import { getAuthenticatedUser } from "@/lib/supabase/server";
+import { getCookieSupabase } from "@/lib/supabase/server";
+import { DataAccessError, dataError } from "./errors";
+
+export type ManagerContext = { userId: string; companyId: string; role: "OWNER" | "MANAGER" };
+
+export async function requireManager(): Promise<ManagerContext> {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new DataAccessError("ADMIN_UNAUTHENTICATED", "Manager sign-in is required.", 401);
+  const { data, error } = await getAdminSupabase().from("company_users").select("company_id,role")
+    .eq("user_id", user.id).eq("status", "ACTIVE").in("role", ["OWNER", "MANAGER"]).limit(1).maybeSingle();
+  if (error || !data) throw new DataAccessError("ADMIN_FORBIDDEN", "Manager access is required.", 403);
+  return { userId: user.id, companyId: data.company_id, role: data.role };
+}
+
+export async function getWorkforce() {
+  const manager = await requireManager();
+  const { data, error } = await getAdminSupabase().from("time_entries")
+    .select("id,employee_id,worksite_id,clock_in_at,approval_status,employees(preferred_name),worksites(name),break_entries(id,started_at,ended_at),time_events(location_verification_result,server_timestamp)")
+    .eq("company_id", manager.companyId).eq("status", "OPEN").order("clock_in_at");
+  if (error) throw dataError(error, "Unable to load workforce status.");
+  return (data ?? []).map((entry) => ({
+    id: entry.id, employeeId: entry.employee_id,
+    employeeName: (entry.employees as unknown as { preferred_name: string })?.preferred_name ?? "Employee",
+    worksiteName: (entry.worksites as unknown as { name: string })?.name ?? "Worksite",
+    clockInAt: entry.clock_in_at,
+    state: (entry.break_entries as unknown as { ended_at: string | null }[] | null)?.some((item) => !item.ended_at) ? "ON_BREAK" : "CLOCKED_IN",
+    location: [...((entry.time_events as unknown as { location_verification_result: string; server_timestamp: string }[]) ?? [])].sort((a,b) => b.server_timestamp.localeCompare(a.server_timestamp))[0]?.location_verification_result ?? "MISSING",
+  }));
+}
+
+export async function getTimesheets() {
+  const manager = await requireManager();
+  const { data, error } = await getAdminSupabase().from("time_entries")
+    .select("id,employee_id,worksite_id,clock_in_at,clock_out_at,total_work_minutes,total_break_minutes,approval_status,manager_note,employees(preferred_name),worksites(name),time_events(location_verification_result)")
+    .eq("company_id", manager.companyId).neq("status", "VOIDED").order("clock_in_at", { ascending: false }).limit(200);
+  if (error) throw dataError(error, "Unable to load timesheets."); return data ?? [];
+}
+
+export async function getTimesheet(entryId: string) {
+  const manager = await requireManager();
+  const { data, error } = await getAdminSupabase().from("time_entries")
+    .select("*,employees(preferred_name),worksites(name,address_line_1,city,state),break_entries(*),time_events(*),time_correction_requests(*)")
+    .eq("id", entryId).eq("company_id", manager.companyId).single();
+  if (error || !data) throw new DataAccessError("NOT_FOUND", "Timesheet was not found.", 404); return data;
+}
+
+export async function reviewTimesheet(entryId: string, decision: "APPROVED" | "REJECTED", note: string | null) {
+  await requireManager();
+  const { data, error } = await (await getCookieSupabase()).rpc("approve_time_entry", { p_entry_id: entryId, p_approved: decision === "APPROVED", p_note: note });
+  if (error) throw dataError(error, "Unable to review timesheet."); return data;
+}
+
+export async function editTimesheet(entryId: string, input: { clockInAt?: string; clockOutAt?: string; breaks?: unknown; reason: string }) {
+  await requireManager();
+  const { data, error } = await (await getCookieSupabase()).rpc("manager_edit_time_entry", {
+    p_entry_id: entryId, p_clock_in_at: input.clockInAt ?? null, p_clock_out_at: input.clockOutAt ?? null,
+    p_breaks: input.breaks ?? null, p_reason: input.reason,
+  });
+  if (error) throw dataError(error, "Unable to correct timesheet."); return data;
+}
+
+export async function listWorksites() {
+  const manager = await requireManager();
+  const { data, error } = await getAdminSupabase().from("worksites").select("*").eq("company_id", manager.companyId).order("name");
+  if (error) throw dataError(error, "Unable to load worksites."); return data ?? [];
+}
+
+export async function saveWorksite(input: Record<string, unknown>, id?: string) {
+  const manager = await requireManager();
+  const record = { ...input, company_id: manager.companyId, updated_by: manager.userId, updated_at: new Date().toISOString() };
+  const operation = id
+    ? getAdminSupabase().from("worksites").update(record).eq("id", id).eq("company_id", manager.companyId)
+    : getAdminSupabase().from("worksites").insert({ ...record, created_by: manager.userId });
+  const { data, error } = await operation.select().single();
+  if (error) throw dataError(error, "Unable to save worksite."); return data;
+}
+
+export async function reviewTimeOff(requestId: string, decision: "APPROVED" | "DENIED", note: string | null) {
+  await requireManager();
+  const { data, error } = await (await getCookieSupabase()).rpc("review_time_off_request", { p_request_id: requestId, p_decision: decision, p_note: note });
+  if (error) throw dataError(error, "Unable to review time-off request."); return data;
+}
+
+export async function getTimeOffRequests() {
+  const manager=await requireManager();
+  const{data,error}=await getAdminSupabase().from("time_off_requests").select("*,employees(preferred_name)").eq("company_id",manager.companyId).order("created_at",{ascending:false}).limit(200);
+  if(error)throw dataError(error,"Unable to load time-off requests.");return data??[];
+}
