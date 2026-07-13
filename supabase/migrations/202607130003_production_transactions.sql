@@ -127,7 +127,7 @@ begin
 
   if p_action='CLOCK_IN' then
     insert into public.time_entries(company_id,employee_id,worksite_id,clock_in_at,status,approval_status)
-    values(v_employee.company_id,v_employee.id,v_worksite.id,v_now,'OPEN',case when v_review then 'NEEDS_REVIEW' else 'PENDING' end) returning * into v_entry;
+    values(v_employee.company_id,v_employee.id,v_worksite.id,v_now,'OPEN',(case when v_review then 'NEEDS_REVIEW' else 'PENDING' end)::public.approval_status) returning * into v_entry;
   elsif p_action='BREAK_START' then
     insert into public.break_entries(company_id,employee_id,time_entry_id,break_type,started_at,status)
     values(v_employee.company_id,v_employee.id,v_entry.id,'UNPAID',v_now,'OPEN') returning * into v_break;
@@ -140,7 +140,7 @@ begin
     v_elapsed:=greatest(0,floor(extract(epoch from (v_now-v_entry.clock_in_at))/60)::integer);
     update public.time_entries set clock_out_at=v_now,status='COMPLETED',total_break_minutes=v_all_breaks,
       total_work_minutes=greatest(0,v_elapsed-v_unpaid),regular_minutes=greatest(0,v_elapsed-v_unpaid),overtime_minutes=0,
-      approval_status=case when v_review or approval_status='NEEDS_REVIEW' or exists(select 1 from public.time_events where time_entry_id=v_entry.id and location_verification_result in ('MISSING','OUTSIDE')) then 'NEEDS_REVIEW' else 'PENDING' end,
+      approval_status=(case when v_review or approval_status='NEEDS_REVIEW' or exists(select 1 from public.time_events where time_entry_id=v_entry.id and location_verification_result in ('MISSING','OUTSIDE')) then 'NEEDS_REVIEW' else 'PENDING' end)::public.approval_status,
       updated_at=v_now where id=v_entry.id returning * into v_entry;
   end if;
 
@@ -211,5 +211,10 @@ revoke all on function public.review_time_off_request(uuid,text,text) from publi
 grant execute on function public.review_time_off_request(uuid,text,text) to authenticated;
 
 -- Server-side service operations still carry explicit tenant predicates. Service-role is not exposed to clients.
-grant select,insert,update on public.employee_sessions,public.employees,public.employee_worksites,public.worksites,public.time_entries,public.break_entries,public.time_events,public.time_correction_requests,public.time_off_requests,public.companies to service_role;
+grant select,insert,update on public.employee_sessions,public.employees,public.employee_worksites,public.worksites,public.time_entries,public.break_entries,public.time_events,public.time_correction_requests,public.time_off_requests,public.companies,public.company_users to service_role;
+
+-- Authenticated company users still pass every table's tenant-scoped RLS policy.
+grant select on public.companies,public.company_users,public.employees,public.worksites,public.employee_worksites,public.time_entries,public.break_entries,public.time_events,public.time_correction_requests,public.time_off_requests,public.audit_logs to authenticated;
+grant insert,update,delete on public.worksites,public.employee_worksites,public.time_correction_requests,public.time_off_requests to authenticated;
+grant update on public.employees,public.time_entries,public.break_entries to authenticated;
 commit;
