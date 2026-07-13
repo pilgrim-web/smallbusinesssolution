@@ -8,6 +8,8 @@
 - Never log PINs, PIN hashes, raw session tokens, or precise location payloads.
 - Location capture is event-based only. Never add background or continuous tracking.
 - Every manager edit requires a reason, immutable event, and audit record containing original values.
+- Production routes must use `lib/data` and PostgreSQL RPCs; in-memory stores are permitted only under `tests/`.
+- Never run `supabase db reset` against a linked staging or production project.
 
 ## Required checks
 

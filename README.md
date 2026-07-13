@@ -1,25 +1,64 @@
 # Harbor Time
 
-Harbor Time is a mobile-first employee time clock and manager review experience for small service teams. Phase 2 includes employee PIN sessions, a server-authoritative clock state machine, breaks, per-event location verification, pay-period summaries, correction requests, basic time off, worksite settings, live workforce status, and timesheet review.
+Harbor Time is a mobile-first employee time clock and manager review application backed by Supabase/PostgreSQL. Production APIs use durable database repositories, hashed PIN sessions, atomic clock RPCs, tenant-scoped manager authorization, immutable event history, and event-only location verification.
+
+## Requirements
+
+- Node.js 22 and npm
+- Supabase CLI and Docker for local database development
+- A Supabase project for preview/staging and a separate project for production
+- Vercel projects/environments for preview and production
 
 ## Local development
 
 ```bash
+npm ci
+supabase start
+supabase db reset
 cp .env.example .env.local
-npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The local demonstration employee credentials are company `HARBOR`, employee `1042`, PIN `2468`. They exist only in the in-memory development adapter.
+Populate `.env.local` from `supabase status -o env`:
 
-## Production setup
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<local ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<local SERVICE_ROLE_KEY>
+EMPLOYEE_SESSION_PEPPER=<random value of at least 32 characters>
+```
 
-1. Create a Supabase project and run migrations in `supabase/migrations` in order.
-2. Configure the Supabase URL, anonymous key, service-role key, and a random 32+ character `EMPLOYEE_SESSION_PEPPER`.
-3. Replace the development adapter in `lib/demo-store.ts` with repository calls that execute each time-clock action in one database transaction.
-4. Seed owner/manager roles, worksites, employee PIN hashes, and employee-worksite assignments through privileged server code.
+`supabase/seed.sql` is explicitly local-only and provides `HARBOR / 1042 / 2468`. Production code contains no hard-coded employee identity, worksite, company, or PIN.
 
-The service-role key must never be sent to the browser. The demo adapter is intentionally not durable and is not a production datastore.
+## Preview/staging environment
+
+Create a non-production Supabase project and configure these Vercel Preview variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`: staging project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: staging anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY`: staging service-role key, server-only
+- `EMPLOYEE_SESSION_PEPPER`: staging-only random 32+ character secret
+
+Link the Supabase CLI to staging, apply migrations without the local seed, create manager users and company memberships, then verify:
+
+```bash
+supabase link --project-ref <staging-project-ref>
+supabase db push
+npm ci
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+npm run test:e2e
+```
+
+Run the database integration suite against staging only with explicit test credentials. Do not point destructive/reset commands at production.
+
+## Production environment
+
+Use a separate Supabase project and separate Vercel Production secrets. Generate a different `EMPLOYEE_SESSION_PEPPER`; never reuse staging secrets. Apply reviewed migrations with `supabase db push`, confirm RLS and service-role isolation, seed real data through privileged administration, and deploy only after staging passes.
+
+The service-role key and session pepper must never use a `NEXT_PUBLIC_` prefix, appear in browser bundles, logs, screenshots, commits, or support messages.
 
 ## Verification
 
@@ -28,6 +67,17 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build
+npm run test:e2e
 ```
 
-See `docs/architecture.md`, `docs/security.md`, and `docs/location-privacy.md` before deployment.
+When local Supabase is running:
+
+```bash
+supabase db reset
+SUPABASE_TEST_URL=http://127.0.0.1:54321 \
+SUPABASE_SERVICE_ROLE_KEY=<local-service-role-key> \
+SUPABASE_TEST_ANON_KEY=<local-anon-key> \
+npm run test:integration
+```
+
+See [production deployment](docs/production-deployment.md), [security](docs/security.md), and [location privacy](docs/location-privacy.md) before staging.
