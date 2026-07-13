@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { authenticateEmployee, employeeFromToken, performAction, resetStoreForTests, store } from "@/lib/demo-store";
+import { authenticateEmployee, employeeFromToken, employeeId, performAction, resetStoreForTests, store, worksiteId } from "./helpers/memory-harness";
 
-const employeeId = "22222222-2222-4222-8222-222222222222";
-const worksiteId = "33333333-3333-4333-8333-333333333333";
 const location = { latitude: 37.7955, longitude: -122.2787, accuracyMeters: 8, permissionStatus: "GRANTED" as const };
 const at = (minutes: number) => new Date(Date.UTC(2026, 6, 13, 8, minutes));
 const act = (action: "CLOCK_IN" | "CLOCK_OUT" | "BREAK_START" | "BREAK_END", minute: number, key = crypto.randomUUID()) => performAction({ employeeId, worksiteId, action, location, idempotencyKey: key, now: at(minute) });
@@ -20,8 +18,8 @@ describe("server-authoritative clock operations", () => {
 
 describe("PIN sessions", () => {
   beforeEach(resetStoreForTests);
-  it("authenticates a hashed PIN and derives employee identity from the token", () => { const { token } = authenticateEmployee("HARBOR", "1042", "2468", at(0)); expect(employeeFromToken(token, at(1))?.id).toBe(employeeId); });
-  it("does not accept an expired session", () => { const { token } = authenticateEmployee("HARBOR", "1042", "2468", at(0)); expect(employeeFromToken(token, new Date(at(0).getTime() + 9 * 60 * 60 * 1000))).toBeNull(); });
-  it("temporarily locks after repeated failures", () => { for (let index = 0; index < 5; index++) expect(() => authenticateEmployee("HARBOR", "1042", "0000", at(index))).toThrow(); expect(store.employees[0].lockedUntil).toBeInstanceOf(Date); expect(() => authenticateEmployee("HARBOR", "1042", "2468", at(6))).toThrow(/could not be verified/); });
-  it("uses the same error for company, employee and PIN failures", () => { const failures = [() => authenticateEmployee("BAD", "1042", "2468"), () => authenticateEmployee("HARBOR", "9999", "2468"), () => authenticateEmployee("HARBOR", "1042", "9999")]; for (const failure of failures) expect(failure).toThrow("The sign-in details could not be verified. Try again later."); });
+  it("authenticates a hashed PIN and derives employee identity from the token", () => { const { token } = authenticateEmployee("TEST", "T-1", "7531", at(0)); expect(employeeFromToken(token, at(1))?.id).toBe(employeeId); });
+  it("does not accept an expired session", () => { const { token } = authenticateEmployee("TEST", "T-1", "7531", at(0)); expect(employeeFromToken(token, new Date(at(0).getTime() + 9 * 60 * 60 * 1000))).toBeNull(); });
+  it("temporarily locks after repeated failures", () => { for (let index = 0; index < 5; index++) expect(() => authenticateEmployee("TEST", "T-1", "0000", at(index))).toThrow(); expect(store.employees[0].lockedUntil).toBeInstanceOf(Date); expect(() => authenticateEmployee("TEST", "T-1", "7531", at(6))).toThrow(/could not be verified/); });
+  it("uses the same error for company, employee and PIN failures", () => { const failures = [() => authenticateEmployee("BAD", "T-1", "7531"), () => authenticateEmployee("TEST", "UNKNOWN", "7531"), () => authenticateEmployee("TEST", "T-1", "9999")]; for (const failure of failures) expect(failure).toThrow("The sign-in details could not be verified. Try again later."); });
 });
