@@ -21,7 +21,7 @@ Every pilot company receives a separate `companies` tenant, manager membership, 
 - Days 4–7: add the second company only if no cross-tenant, missing-event, or timestamp issue exists.
 - Week 2: optionally add the third company and exercise cleaning/restaurant/field-service patterns.
 - Daily: review open shifts, geofence flags, missing location, duplicate attempts, corrections, and unapproved entries.
-- Weekly: export a reconciliation report against the company’s existing timekeeping system. Harbor Time remains parallel test software, not the final payroll source.
+- Weekly: export a reconciliation report against the company’s existing timekeeping system. CrewLedger Time remains parallel test software, not the final payroll source.
 
 ## Exit criteria
 

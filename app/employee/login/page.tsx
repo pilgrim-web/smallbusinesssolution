@@ -25,7 +25,7 @@ export default function EmployeeLogin() {
     <main className="login-page">
       <section className="login-card" aria-labelledby="login-title">
         <div className="brand-mark"><LockKeyhole aria-hidden="true" /></div>
-        <p className="eyebrow">Harbor Time</p>
+        <p className="eyebrow">CrewLedger Time</p>
         <h1 id="login-title">Employee sign in</h1>
         <p className="muted">Use the details provided by your manager.</p>
         <form onSubmit={submit} className="form-stack">

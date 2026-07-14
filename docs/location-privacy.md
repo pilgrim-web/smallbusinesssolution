@@ -1,6 +1,6 @@
 # Location privacy
 
-Harbor Time asks for location to verify that a clock event occurred near the selected worksite. The browser requests a single position only when clocking in or out, and optionally at break events when a worksite enables that setting. It does not continuously collect location, track routes, or collect off-clock movement.
+CrewLedger Time asks for location to verify that a clock event occurred near the selected worksite. The browser requests a single position only when clocking in or out, and optionally at break events when a worksite enables that setting. It does not continuously collect location, track routes, or collect off-clock movement.
 
 Stored event fields can include latitude, longitude, accuracy, client capture time, server-calculated distance, configured radius, inside/outside result, and permission state. The server—not the device—calculates distance. The employee who generated the event and authorized managers in the same company can access it. Cross-company access is prohibited by server scope and RLS.
 

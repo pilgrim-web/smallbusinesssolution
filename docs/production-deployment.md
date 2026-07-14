@@ -1,5 +1,18 @@
 # Production deployment
 
+## Current production environment
+
+- Product: CrewLedger Time
+- Supabase project: `smallbusinesssolution-production`
+- Supabase project ref: `zvffacwobghakfifainv`
+- Supabase region: `us-west-1`
+- Public application: `https://smallbusinesssolution.vercel.app`
+- Vercel environment: Production
+- Production secrets are separate from Preview and are never committed.
+- Database passwords and the recoverable session pepper are stored in the operator's macOS Keychain.
+
+The staging project remains separate. Never run `supabase db reset` against either linked cloud project. Production was initialized with reviewed migrations only; staging seed and simulation data were not copied.
+
 ## Promotion path
 
 1. Reset a disposable local Supabase database from empty and run integration tests.

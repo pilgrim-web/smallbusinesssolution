@@ -5,7 +5,7 @@ export default function Home() {
     <main className="welcome-page">
       <section className="welcome-card">
         <div className="brand-mark">H</div>
-        <p className="eyebrow">Harbor Time</p>
+        <p className="eyebrow">CrewLedger Time</p>
         <h1>Work time, made clear.</h1>
         <p className="muted">Secure time tracking for teams that work on-site and in the field.</p>
         <div className="stack">

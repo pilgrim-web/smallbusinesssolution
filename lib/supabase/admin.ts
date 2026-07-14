@@ -16,7 +16,7 @@ export function getAdminSupabase() {
   }
   cachedClient = createClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { "x-application-name": "harbor-time-server" } },
+    global: { headers: { "x-application-name": "crewledger-time-server" } },
   });
   return cachedClient;
 }

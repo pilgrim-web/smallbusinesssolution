@@ -16,7 +16,7 @@ export function EmployeeShell({ children }: { children: React.ReactNode }) {
   if (pathname === "/employee/login") return <>{children}</>;
   return (
     <div className="employee-shell">
-      <header className="employee-header"><Link href="/employee/clock" className="wordmark"><span>H</span> Harbor Time</Link><button className="icon-button" onClick={logout} aria-label="Log out"><LogOut /></button></header>
+      <header className="employee-header"><Link href="/employee/clock" className="wordmark"><span>C</span> CrewLedger Time</Link><button className="icon-button" onClick={logout} aria-label="Log out"><LogOut /></button></header>
       <main className="employee-main">{children}</main>
       <nav className="bottom-nav" aria-label="Employee navigation">
         {links.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={pathname === href ? "active" : ""} aria-current={pathname === href ? "page" : undefined}><Icon aria-hidden="true"/><span>{label}</span></Link>)}

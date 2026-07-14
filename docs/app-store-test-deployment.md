@@ -1,6 +1,8 @@
 # App Store test deployment
 
-Harbor Time includes an iOS Capacitor shell for a TestFlight pilot. The shell uses bundle identifier `com.pilgrimweb.harbortime`, iOS 15+, build `1`, version `1.0`, and the deployed HTTPS application. The browser/PWA remains supported.
+CrewLedger Time includes an iOS Capacitor shell for a TestFlight pilot. The shell uses bundle identifier `com.pilgrimweb.harbortime`, iOS 15+, App Store version `0.1`, and the public production HTTPS application. The browser/PWA remains supported.
+
+TestFlight build `0.1 (1)` pointed to a Vercel Preview deployment and must not be assigned to testers. Build `0.1 (2)` points to `https://smallbusinesssolution.vercel.app`, uses the separate production Supabase project, and is the first production-connected pilot candidate.
 
 ## Prepared in the repository
 
