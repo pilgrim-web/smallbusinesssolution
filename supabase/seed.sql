@@ -1,6 +1,6 @@
 -- Explicit local-only seed. Never apply this file to preview or production.
-insert into public.companies(id,name,code,pay_frequency,timezone,location_mode)
-values('11111111-1111-4111-8111-111111111111','Harbor Demo Company','HARBOR','BIWEEKLY','America/Los_Angeles','FLAG')
+insert into public.companies(id,name,legal_name,display_name,code,pay_frequency,timezone,location_mode)
+values('11111111-1111-4111-8111-111111111111','CrewLedger Demo Company','CrewLedger Demo Company','CrewLedger Demo Company','HARBOR','BIWEEKLY','America/Los_Angeles','FLAG')
 on conflict(id) do nothing;
 
 insert into public.employees(id,company_id,employee_number,preferred_name,pin_hash,status)

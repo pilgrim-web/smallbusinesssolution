@@ -25,12 +25,22 @@ The staging project remains separate. Never run `supabase db reset` against eith
 
 ## Required manual provisioning
 
+- Create the first Platform Admin only with `scripts/production/bootstrap-platform-admin.mjs`. The script generates a strong password, stores it in macOS Keychain, creates no company membership, and compensates by deleting the Auth user if database bootstrap fails.
+- The first Platform Admin must enroll TOTP at `/support-admin/login`; platform pages reject sessions below Supabase `aal2`.
 - Create Supabase Auth owner/manager users.
 - Insert tenant-scoped `company_users` roles.
 - Create companies, employees with bcrypt PIN hashes, worksites, and assignments using privileged tooling.
 - Set allowed redirect URLs and Vercel domains in Supabase Auth.
 - Configure rate limiting at the edge for employee and manager authentication endpoints.
 - Configure database backups, session cleanup, and location/event retention jobs.
+
+The platform bootstrap command requires a real, recoverable email address:
+
+```sh
+PLATFORM_ADMIN_EMAIL=admin@example.com node scripts/production/bootstrap-platform-admin.mjs
+```
+
+Do not use `admin@crewledger.com` until the domain has working MX records and the mailbox has been tested. The password is intentionally not printed; retrieve it from the `crewledger-production-platform-admin` entry in macOS Keychain Access.
 
 ## Rollback
 

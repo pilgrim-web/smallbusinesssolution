@@ -2,6 +2,8 @@
 
 PINs and 4–8 digit manager access codes are bcrypt hashes and are never returned or logged. Authentication returns one generic failure and locks the identity temporarily after five failed attempts. Employee authentication creates an eight-hour random session whose cookie is HttpOnly, SameSite=Strict, and Secure in production; the database stores only a peppered token hash. Successful manager code authentication exchanges a server-generated one-time link token for a normal Supabase Auth cookie, so the same RLS and manager RPC authorization applies as email/password login.
 
+Platform operators are stored separately in `platform_users` and cannot also hold company membership. They are created only by a service-role bootstrap script, must complete TOTP MFA, and platform routes require an `aal2` Supabase session. Cross-company support access requires a reason, expires after 30 minutes, creates platform and company audit events, and never returns employee PIN hashes.
+
 The trusted server hashes the raw cookie token before any lookup. PostgreSQL derives both employee and company from that session inside the same transaction that verifies worksite activation, tenant ownership, assignment, current clock state, and location mode. Idempotency keys, row locks, transactions, and partial unique indexes protect against duplicates and concurrent requests.
 
 RLS scopes managers to memberships in their company. Employee PIN endpoints do not directly expose database credentials. No ordinary role can read sessions, PIN hashes, mutate event history, or mutate audit history. Exact location is limited to the generating employee through the scoped server and authorized managers through RLS.

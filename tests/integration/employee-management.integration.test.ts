@@ -8,7 +8,7 @@ describe.skipIf(!(url&&serviceKey&&anonKey))("employee management transactions",
   let admin:SupabaseClient;let actorId:string;let companyId:string;let worksiteId:string;let teamId:string;let employeeId:string;
   beforeAll(async()=>{
     admin=createClient(url!,serviceKey!,{auth:{persistSession:false}});companyId=randomUUID();worksiteId=randomUUID();
-    expect((await admin.from("companies").insert({id:companyId,name:"Management Test",code:`MGMT-${randomUUID()}`})).error).toBeNull();
+    expect((await admin.from("companies").insert({id:companyId,name:"Management Test",legal_name:"Management Test",display_name:"Management Test",code:`MGMT-${randomUUID()}`})).error).toBeNull();
     const actor=await admin.auth.admin.createUser({email:`management-${randomUUID()}@example.test`,password:`T!${randomUUID()}a9`,email_confirm:true});expect(actor.error).toBeNull();actorId=actor.data.user!.id;
     expect((await admin.from("company_users").insert({company_id:companyId,user_id:actorId,role:"MANAGER"})).error).toBeNull();
     expect((await admin.from("worksites").insert({id:worksiteId,company_id:companyId,name:"Management Site",address_line_1:"1 Test Way",city:"Oakland",state:"CA",postal_code:"94607",timezone:"America/Los_Angeles"})).error).toBeNull();
@@ -22,7 +22,7 @@ describe.skipIf(!(url&&serviceKey&&anonKey))("employee management transactions",
     const audits=await admin.from("audit_logs").select("new_values").eq("entity_id",employeeId);expect(JSON.stringify(audits.data)).not.toContain(hash);expect(JSON.stringify(audits.data)).not.toContain("4826");
   });
   it("blocks cross-company assignments and revokes sessions on PIN reset",async()=>{
-    const otherCompany=randomUUID(),otherWorksite=randomUUID();expect((await admin.from("companies").insert({id:otherCompany,name:"Other",code:`OTHER-${randomUUID()}`})).error).toBeNull();expect((await admin.from("worksites").insert({id:otherWorksite,company_id:otherCompany,name:"Other Site",address_line_1:"2 Test Way",city:"Oakland",state:"CA",postal_code:"94607",timezone:"America/Los_Angeles"})).error).toBeNull();
+    const otherCompany=randomUUID(),otherWorksite=randomUUID();expect((await admin.from("companies").insert({id:otherCompany,name:"Other",legal_name:"Other",display_name:"Other",code:`OTHER-${randomUUID()}`})).error).toBeNull();expect((await admin.from("worksites").insert({id:otherWorksite,company_id:otherCompany,name:"Other Site",address_line_1:"2 Test Way",city:"Oakland",state:"CA",postal_code:"94607",timezone:"America/Los_Angeles"})).error).toBeNull();
     expect((await admin.rpc("manager_set_employee_assignments",{p_actor_user_id:actorId,p_company_id:companyId,p_employee_id:employeeId,p_worksite_ids:[otherWorksite],p_team_group_ids:[]})).error).not.toBeNull();
     const tokenHash=createHash("sha256").update(randomUUID()).digest("hex");expect((await admin.rpc("create_employee_session",{p_employee_id:employeeId,p_token_hash:tokenHash,p_expires_at:new Date(Date.now()+3600000).toISOString()})).error).toBeNull();
     const reset=await admin.rpc("manager_reset_employee_pin",{p_actor_user_id:actorId,p_company_id:companyId,p_employee_id:employeeId,p_pin_hash:await bcrypt.hash("5937",10)});expect(reset.error).toBeNull();expect((await admin.rpc("resolve_employee_session",{p_token_hash:tokenHash})).data).toHaveLength(0);
