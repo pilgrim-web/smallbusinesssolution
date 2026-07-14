@@ -1,6 +1,6 @@
 # Harbor Time
 
-Harbor Time is a mobile-first employee time clock and manager review application backed by Supabase/PostgreSQL. Production APIs use durable database repositories, hashed PIN sessions, atomic clock RPCs, tenant-scoped manager authorization, immutable event history, and event-only location verification.
+Harbor Time is a mobile-first employee time clock and manager review application backed by Supabase/PostgreSQL. Production APIs use durable database repositories, hashed PIN and manager-code authentication, atomic clock RPCs, tenant-scoped manager authorization, immutable event history, and event-only location verification.
 
 ## Requirements
 

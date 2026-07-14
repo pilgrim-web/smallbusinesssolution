@@ -1,0 +1,43 @@
+.login-options {
+  background: #edf2f1;
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 24px;
+  padding: 4px;
+}
+.login-options button {
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 750;
+  min-height: 42px;
+  padding: 8px;
+}
+.login-options button.active {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(24,53,58,.08);
+  color: var(--brand-dark);
+}
+.form-stack label small { color: var(--muted); font-size: .7rem; font-weight: 500; }
+.team-table { overflow: auto; }
+.team-head, .team-row {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1.3fr .8fr 1.3fr .45fr .65fr .85fr;
+  min-width: 850px;
+  padding: 13px 20px;
+}
+.team-head { color: var(--muted); font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+.team-row { border-top: 1px solid #edf1f1; font-size: .78rem; }
+.employee-cell > div { display: flex; flex-direction: column; }
+.employee-cell small { color: var(--muted); font-size: .7rem; margin-top: 2px; }
+.team-state { font-size: .7rem; font-weight: 800; }
+.team-state::before { background: #93a0a4; border-radius: 50%; content: ""; display: inline-block; height: 7px; margin-right: 6px; width: 7px; }
+.team-state.clocked_in::before { background: #23a171; }
+.team-state.on_break::before { background: #d88b22; }

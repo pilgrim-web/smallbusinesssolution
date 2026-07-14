@@ -39,6 +39,40 @@ export async function getTimesheets() {
   if (error) throw dataError(error, "Unable to load timesheets."); return data ?? [];
 }
 
+export async function getTeamRecords() {
+  const manager = await requireManager();
+  const admin = getAdminSupabase();
+  const [employeesResult, assignmentsResult, entriesResult] = await Promise.all([
+    admin.from("employees").select("id,employee_number,preferred_name,status,created_at").eq("company_id", manager.companyId).order("preferred_name"),
+    admin.from("employee_worksites").select("employee_id,status,worksites(name)").eq("company_id", manager.companyId).eq("status", "ACTIVE"),
+    admin.from("time_entries").select("id,employee_id,status,clock_in_at,clock_out_at,total_work_minutes,approval_status,break_entries(status)").eq("company_id", manager.companyId).neq("status", "VOIDED").order("clock_in_at", { ascending: false }).limit(1000),
+  ]);
+  if (employeesResult.error) throw dataError(employeesResult.error, "Unable to load team members.");
+  if (assignmentsResult.error) throw dataError(assignmentsResult.error, "Unable to load team worksites.");
+  if (entriesResult.error) throw dataError(entriesResult.error, "Unable to load team records.");
+  const assignments = new Map<string, string[]>();
+  for (const assignment of assignmentsResult.data ?? []) {
+    const worksite = assignment.worksites as unknown as { name: string } | null;
+    if (!worksite?.name) continue;
+    assignments.set(assignment.employee_id, [...(assignments.get(assignment.employee_id) ?? []), worksite.name]);
+  }
+  const entriesByEmployee = new Map<string, NonNullable<typeof entriesResult.data>>();
+  for (const entry of entriesResult.data ?? []) entriesByEmployee.set(entry.employee_id, [...(entriesByEmployee.get(entry.employee_id) ?? []), entry]);
+  return (employeesResult.data ?? []).map((employee) => {
+    const entries = entriesByEmployee.get(employee.id) ?? [];
+    const open = entries.find((entry) => entry.status === "OPEN");
+    const openBreaks = (open?.break_entries as unknown as { status: string }[] | null) ?? [];
+    return {
+      ...employee,
+      worksites: assignments.get(employee.id) ?? [],
+      currentState: open ? (openBreaks.some((item) => item.status === "OPEN") ? "ON_BREAK" : "CLOCKED_IN") : "OFF_CLOCK",
+      completedShifts: entries.filter((entry) => entry.status === "COMPLETED").length,
+      approvedMinutes: entries.filter((entry) => entry.status === "COMPLETED" && entry.approval_status === "APPROVED").reduce((sum, entry) => sum + (entry.total_work_minutes ?? 0), 0),
+      lastShiftAt: entries.find((entry) => entry.status === "COMPLETED")?.clock_out_at ?? null,
+    };
+  });
+}
+
 export async function getTimesheet(entryId: string) {
   const manager = await requireManager();
   const { data, error } = await getAdminSupabase().from("time_entries")
