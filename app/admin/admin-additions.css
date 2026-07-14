@@ -41,3 +41,39 @@
 .team-state::before { background: #93a0a4; border-radius: 50%; content: ""; display: inline-block; height: 7px; margin-right: 6px; width: 7px; }
 .team-state.clocked_in::before { background: #23a171; }
 .team-state.on_break::before { background: #d88b22; }
+.management-grid { display: grid; gap: 16px; grid-template-columns: 1.2fr .8fr; margin-bottom: 18px; }
+.management-form { display: flex; flex-direction: column; gap: 14px; padding: 20px; }
+.management-form label, .employee-controls label { color: #42565f; display: flex; flex-direction: column; font-size: .78rem; font-weight: 700; gap: 6px; }
+.management-form input, .management-form textarea, .employee-controls input, .employee-controls select { border: 1px solid #bdcbcf; border-radius: 9px; min-height: 43px; padding: 9px 11px; }
+.management-form textarea { min-height: 78px; resize: vertical; }
+.management-form label small { color: var(--muted); font-size: .68rem; font-weight: 500; }
+.management-heading { align-items: center; display: flex; gap: 11px; }
+.management-heading > svg { background: #e5f1ee; border-radius: 10px; color: var(--brand); height: 38px; padding: 9px; width: 38px; }
+.management-heading h2, .employee-controls h3 { font-size: .95rem; margin: 0; }
+.management-heading p, .employee-controls p { color: var(--muted); font-size: .72rem; margin: 3px 0 0; }
+.inline-team-form { display: flex; flex-direction: column; gap: 11px; }
+.assignment-groups { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.assignment-groups fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0; min-width: 0; padding: 10px; }
+.assignment-groups legend { color: var(--muted); font-size: .7rem; font-weight: 800; padding: 0 5px; text-transform: uppercase; }
+.assignment-groups .check-label { font-size: .74rem; margin: 6px 0; }
+.team-editor-list { display: flex; flex-direction: column; gap: 7px; }
+.team-editor-list details { border: 1px solid var(--line); border-radius: 10px; }
+.team-editor-list summary { align-items: center; cursor: pointer; display: flex; justify-content: space-between; padding: 9px 11px; }
+.team-editor-list summary span { color: var(--brand-dark); font-size: .75rem; font-weight: 800; }
+.team-editor-list summary span.inactive, .team-editor-list summary small { color: var(--muted); }
+.team-editor-list summary small { font-size: .62rem; }
+.team-editor-list form { border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 9px; padding: 11px; }
+.employee-manage-row { border-top: 1px solid #edf1f1; }
+.employee-manage-row summary { align-items: center; cursor: pointer; display: grid; gap: 12px; grid-template-columns: auto 1.1fr 1.2fr 1fr auto; list-style: none; padding: 15px 20px; }
+.employee-manage-row summary::-webkit-details-marker { display: none; }
+.employee-manage-row summary > span:nth-child(2) { display: flex; flex-direction: column; }
+.employee-manage-row summary small { color: var(--muted); font-size: .68rem; margin-top: 2px; }
+.employee-manage-row summary > span:nth-child(3), .employee-manage-row summary > span:nth-child(4) { align-items: center; color: var(--muted); display: flex; font-size: .72rem; gap: 5px; }
+.employee-manage-row summary svg { height: 14px; }
+.employee-manage-row summary b { color: var(--brand); font-size: .68rem; }
+.employee-controls { background: #f8faf9; border-top: 1px solid var(--line); display: grid; gap: 14px; grid-template-columns: .8fr .8fr 1.4fr; padding: 18px 20px; }
+.employee-controls form { background: #fff; border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; gap: 11px; padding: 15px; }
+.employee-controls h3 { align-items: center; display: flex; gap: 7px; }
+.employee-controls h3 svg { color: var(--brand); height: 17px; }
+@media(max-width:850px){.management-grid,.employee-controls{grid-template-columns:1fr}.employee-manage-row summary{grid-template-columns:auto 1fr auto}.employee-manage-row summary>span:nth-child(3),.employee-manage-row summary>span:nth-child(4){display:none}}
+@media(max-width:520px){.assignment-groups{grid-template-columns:1fr}}

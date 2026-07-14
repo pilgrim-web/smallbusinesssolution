@@ -2,6 +2,7 @@ import "server-only";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 import { getCookieSupabase } from "@/lib/supabase/server";
+import bcrypt from "bcryptjs";
 import { DataAccessError, dataError } from "./errors";
 
 export type ManagerContext = { userId: string; companyId: string; role: "OWNER" | "MANAGER" };
@@ -44,17 +45,19 @@ export async function getTeamRecords() {
   const admin = getAdminSupabase();
   const [employeesResult, assignmentsResult, entriesResult] = await Promise.all([
     admin.from("employees").select("id,employee_number,preferred_name,status,created_at").eq("company_id", manager.companyId).order("preferred_name"),
-    admin.from("employee_worksites").select("employee_id,status,worksites(name)").eq("company_id", manager.companyId).eq("status", "ACTIVE"),
+    admin.from("employee_worksites").select("employee_id,worksite_id,status,worksites(name)").eq("company_id", manager.companyId).eq("status", "ACTIVE"),
     admin.from("time_entries").select("id,employee_id,status,clock_in_at,clock_out_at,total_work_minutes,approval_status,break_entries(status)").eq("company_id", manager.companyId).neq("status", "VOIDED").order("clock_in_at", { ascending: false }).limit(1000),
   ]);
   if (employeesResult.error) throw dataError(employeesResult.error, "Unable to load team members.");
   if (assignmentsResult.error) throw dataError(assignmentsResult.error, "Unable to load team worksites.");
   if (entriesResult.error) throw dataError(entriesResult.error, "Unable to load team records.");
   const assignments = new Map<string, string[]>();
+  const assignmentIds = new Map<string, string[]>();
   for (const assignment of assignmentsResult.data ?? []) {
     const worksite = assignment.worksites as unknown as { name: string } | null;
     if (!worksite?.name) continue;
     assignments.set(assignment.employee_id, [...(assignments.get(assignment.employee_id) ?? []), worksite.name]);
+    assignmentIds.set(assignment.employee_id, [...(assignmentIds.get(assignment.employee_id) ?? []), assignment.worksite_id]);
   }
   const entriesByEmployee = new Map<string, NonNullable<typeof entriesResult.data>>();
   for (const entry of entriesResult.data ?? []) entriesByEmployee.set(entry.employee_id, [...(entriesByEmployee.get(entry.employee_id) ?? []), entry]);
@@ -65,12 +68,55 @@ export async function getTeamRecords() {
     return {
       ...employee,
       worksites: assignments.get(employee.id) ?? [],
+      assignedWorksiteIds: assignmentIds.get(employee.id) ?? [],
       currentState: open ? (openBreaks.some((item) => item.status === "OPEN") ? "ON_BREAK" : "CLOCKED_IN") : "OFF_CLOCK",
       completedShifts: entries.filter((entry) => entry.status === "COMPLETED").length,
       approvedMinutes: entries.filter((entry) => entry.status === "COMPLETED" && entry.approval_status === "APPROVED").reduce((sum, entry) => sum + (entry.total_work_minutes ?? 0), 0),
       lastShiftAt: entries.find((entry) => entry.status === "COMPLETED")?.clock_out_at ?? null,
     };
   });
+}
+
+export async function getEmployeeManagementData() {
+  const manager = await requireManager();
+  const admin = getAdminSupabase();
+  const [members, worksitesResult, teamsResult, membershipsResult] = await Promise.all([
+    getTeamRecords(),
+    admin.from("worksites").select("id,name,status").eq("company_id",manager.companyId).order("name"),
+    admin.from("team_groups").select("id,name,description,status").eq("company_id",manager.companyId).order("name"),
+    admin.from("employee_team_memberships").select("employee_id,team_group_id").eq("company_id",manager.companyId).eq("status","ACTIVE"),
+  ]);
+  if(worksitesResult.error)throw dataError(worksitesResult.error,"Unable to load worksites.");
+  if(teamsResult.error)throw dataError(teamsResult.error,"Unable to load team groups.");
+  if(membershipsResult.error)throw dataError(membershipsResult.error,"Unable to load team memberships.");
+  const teamIds=new Map<string,string[]>();
+  for(const membership of membershipsResult.data??[])teamIds.set(membership.employee_id,[...(teamIds.get(membership.employee_id)??[]),membership.team_group_id]);
+  const teams=teamsResult.data??[];
+  return {members:members.map((member)=>({...member,teamGroupIds:teamIds.get(member.id)??[],teamNames:teams.filter((team)=>teamIds.get(member.id)?.includes(team.id)).map((team)=>team.name)})),worksites:worksitesResult.data??[],teams};
+}
+
+type EmployeeCreateInput={employeeNumber:string;preferredName:string;pin:string;worksiteIds:string[];teamGroupIds:string[]};
+export async function createEmployee(input:EmployeeCreateInput){
+  const manager=await requireManager();const pinHash=await bcrypt.hash(input.pin,12);
+  const{data,error}=await getAdminSupabase().rpc("manager_create_employee",{p_actor_user_id:manager.userId,p_company_id:manager.companyId,p_employee_number:input.employeeNumber,p_preferred_name:input.preferredName,p_pin_hash:pinHash,p_worksite_ids:input.worksiteIds,p_team_group_ids:input.teamGroupIds});
+  if(error)throw dataError(error,"Unable to create employee. Check that the employee number is unique.");return data;
+}
+export async function resetEmployeePin(employeeId:string,pin:string){
+  const manager=await requireManager();const pinHash=await bcrypt.hash(pin,12);
+  const{error}=await getAdminSupabase().rpc("manager_reset_employee_pin",{p_actor_user_id:manager.userId,p_company_id:manager.companyId,p_employee_id:employeeId,p_pin_hash:pinHash});
+  if(error)throw dataError(error,"Unable to reset employee PIN.");
+}
+export async function updateEmployeeAssignments(employeeId:string,worksiteIds:string[],teamGroupIds:string[]){
+  const manager=await requireManager();const{error}=await getAdminSupabase().rpc("manager_set_employee_assignments",{p_actor_user_id:manager.userId,p_company_id:manager.companyId,p_employee_id:employeeId,p_worksite_ids:worksiteIds,p_team_group_ids:teamGroupIds});
+  if(error)throw dataError(error,"Unable to update employee assignments.");
+}
+export async function updateEmployeeProfile(employeeId:string,preferredName:string,status:"ACTIVE"|"INACTIVE"){
+  const manager=await requireManager();const{error}=await getAdminSupabase().rpc("manager_update_employee_profile",{p_actor_user_id:manager.userId,p_company_id:manager.companyId,p_employee_id:employeeId,p_preferred_name:preferredName,p_status:status});
+  if(error)throw dataError(error,"Unable to update employee profile.");
+}
+export async function saveTeamGroup(input:{name:string;description:string;status:"ACTIVE"|"INACTIVE"},teamGroupId?:string){
+  const manager=await requireManager();const{data,error}=await getAdminSupabase().rpc("manager_save_team_group",{p_actor_user_id:manager.userId,p_company_id:manager.companyId,p_name:input.name,p_description:input.description,p_status:input.status,p_team_group_id:teamGroupId??null});
+  if(error)throw dataError(error,"Unable to save team group. Team names must be unique.");return data;
 }
 
 export async function getTimesheet(entryId: string) {

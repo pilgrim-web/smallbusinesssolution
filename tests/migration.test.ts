@@ -5,6 +5,7 @@ import path from "node:path";
 const sql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130001_phase2_time_clock.sql"), "utf8");
 const productionSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130003_production_transactions.sql"), "utf8");
 const managerCodeSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130004_manager_access_codes.sql"), "utf8");
+const employeeManagementSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130005_employee_management.sql"), "utf8");
 describe("database security migration", () => {
   it("enforces one open entry and one open break", () => { expect(sql).toContain("time_entries_one_open_per_employee"); expect(sql).toContain("break_entries_one_open_per_entry"); });
   it("prevents cross-company worksite assignments", () => expect(sql).toContain("enforce_employee_worksite_tenant"));
@@ -17,4 +18,6 @@ describe("database security migration", () => {
   it("enables tenant RLS on company principals", () => { for (const table of ["companies","company_users","employees"]) expect(productionSql).toContain(`alter table public.${table} enable row level security`); });
   it("stores only manager code hashes and enforces lockout server-side", () => { expect(managerCodeSql).toContain("access_code_hash text"); expect(managerCodeSql).toContain("failed_access_code_attempts >= 4"); expect(managerCodeSql).toContain("interval '15 minutes'"); expect(managerCodeSql).not.toContain("access_code text"); });
   it("keeps manager code verification RPCs service-role only", () => { expect(managerCodeSql).toContain("revoke all on function public.manager_login_candidates(text) from public, anon, authenticated"); expect(managerCodeSql).toContain("grant execute on function public.manager_login_candidates(text) to service_role"); expect(managerCodeSql).toContain("revoke select(access_code_hash"); });
+  it("adds tenant-safe teams and employee management transactions",()=>{expect(employeeManagementSql).toContain("create table public.team_groups");expect(employeeManagementSql).toContain("create table public.employee_team_memberships");expect(employeeManagementSql).toContain("enforce_employee_team_tenant");for(const fn of ["manager_create_employee","manager_reset_employee_pin","manager_set_employee_assignments","manager_update_employee_profile","manager_save_team_group"])expect(employeeManagementSql).toContain(`grant execute on function public.${fn}`);});
+  it("keeps PIN management server-only and audited",()=>{expect(employeeManagementSql).toContain("to service_role");expect(employeeManagementSql).toContain("EMPLOYEE_PIN_RESET");expect(employeeManagementSql).toContain("sessions_revoked");expect(employeeManagementSql).not.toContain("jsonb_build_object('pin_hash'");});
 });
