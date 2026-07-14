@@ -11,4 +11,6 @@ Recommended Phase 3 work:
 5. Add configurable overtime rules only after jurisdictional review and deterministic compliance tests.
 6. Add retention automation, exports, observability with field redaction, and kiosk presentation reusing the same session authorization.
 
+Employee Management now supports employee creation, audited PIN reset with session revocation, worksite assignment, and company-scoped team groups. The iOS shell and pilot documentation are prepared, but TestFlight upload remains gated on Apple signing, a public pilot deployment, permanent support contact, and App Store Connect privacy metadata.
+
 Biometrics, continuous GPS, final tax calculations, legal leave accrual, and compliance claims remain out of scope.

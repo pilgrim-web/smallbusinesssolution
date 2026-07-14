@@ -2,6 +2,8 @@
 
 Harbor Time is a mobile-first employee time clock and manager review application backed by Supabase/PostgreSQL. Production APIs use durable database repositories, hashed PIN and manager-code authentication, atomic clock RPCs, tenant-scoped manager authorization, immutable event history, and event-only location verification.
 
+Managers can create employees, reset PINs (revoking active employee sessions), assign worksites, and manage company-scoped team groups from `/admin/team`. A PWA manifest and Capacitor iOS shell support staged mobile pilots; see [App Store test deployment](docs/app-store-test-deployment.md) and the [1–3 company pilot plan](docs/pilot-test-plan.md).
+
 ## Requirements
 
 - Node.js 22 and npm
