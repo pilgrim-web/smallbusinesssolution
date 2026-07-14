@@ -3,18 +3,26 @@ import { getAdminSupabase } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 import { getCookieSupabase } from "@/lib/supabase/server";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { DataAccessError, dataError } from "./errors";
 
-export type ManagerContext = { userId: string; companyId: string; role: "OWNER" | "MANAGER" };
+export type ManagerContext = { userId: string; companyId: string; role: "OWNER" | "MANAGER" | "SUPPORT_ADMIN" };
 
 export async function requireManager(): Promise<ManagerContext> {
   const user = await getAuthenticatedUser();
   if (!user) throw new DataAccessError("ADMIN_UNAUTHENTICATED", "Manager sign-in is required.", 401);
   const { data, error } = await getAdminSupabase().from("company_users").select("company_id,role")
     .eq("user_id", user.id).eq("status", "ACTIVE").in("role", ["OWNER", "MANAGER"]).limit(1).maybeSingle();
-  if (error || !data) throw new DataAccessError("ADMIN_FORBIDDEN", "Manager access is required.", 403);
-  return { userId: user.id, companyId: data.company_id, role: data.role };
+  if (!error && data) return { userId: user.id, companyId: data.company_id, role: data.role };
+  const selected=(await cookies()).get("harbor_support_company")?.value;
+  if(selected){const support=await getAdminSupabase().from("platform_support_grants").select("company_id").eq("user_id",user.id).eq("company_id",selected).is("revoked_at",null).gt("expires_at",new Date().toISOString()).limit(1).maybeSingle();if(support.data)return{userId:user.id,companyId:support.data.company_id,role:"SUPPORT_ADMIN"};}
+  throw new DataAccessError("ADMIN_FORBIDDEN", "Manager access is required.", 403);
 }
+
+export async function requirePlatformAdmin(){const user=await getAuthenticatedUser();if(!user)throw new DataAccessError("PLATFORM_UNAUTHENTICATED","Platform sign-in is required.",401);const{data,error}=await getAdminSupabase().from("platform_users").select("id,role").eq("user_id",user.id).eq("status","ACTIVE").limit(1).maybeSingle();if(error||!data)throw new DataAccessError("PLATFORM_FORBIDDEN","Platform access is required.",403);return{userId:user.id,platformUserId:data.id,role:data.role};}
+export async function getPlatformCompanies(){await requirePlatformAdmin();const admin=getAdminSupabase();const{data,error}=await admin.from("companies").select("id,name,code,timezone,pay_frequency,employees(count),worksites(count),time_entries(count)").order("name");if(error)throw dataError(error,"Unable to load platform companies.");return data??[];}
+export async function startSupportAccess(companyId:string,reason:string){const platform=await requirePlatformAdmin();const{data,error}=await getAdminSupabase().rpc("start_platform_support_access",{p_user_id:platform.userId,p_company_id:companyId,p_reason:reason,p_minutes:30});if(error)throw dataError(error,"Unable to start support access.");return data;}
+export async function endSupportAccess(){const platform=await requirePlatformAdmin();const{error}=await getAdminSupabase().rpc("end_platform_support_access",{p_user_id:platform.userId});if(error)throw dataError(error,"Unable to end support access.");}
 
 export async function getWorkforce() {
   const manager = await requireManager();

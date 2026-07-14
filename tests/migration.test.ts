@@ -6,6 +6,7 @@ const sql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130
 const productionSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130003_production_transactions.sql"), "utf8");
 const managerCodeSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130004_manager_access_codes.sql"), "utf8");
 const employeeManagementSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130005_employee_management.sql"), "utf8");
+const platformSupportSql = readFileSync(path.join(process.cwd(), "supabase/migrations/202607130006_platform_support_admin.sql"), "utf8");
 describe("database security migration", () => {
   it("enforces one open entry and one open break", () => { expect(sql).toContain("time_entries_one_open_per_employee"); expect(sql).toContain("break_entries_one_open_per_entry"); });
   it("prevents cross-company worksite assignments", () => expect(sql).toContain("enforce_employee_worksite_tenant"));
@@ -20,4 +21,5 @@ describe("database security migration", () => {
   it("keeps manager code verification RPCs service-role only", () => { expect(managerCodeSql).toContain("revoke all on function public.manager_login_candidates(text) from public, anon, authenticated"); expect(managerCodeSql).toContain("grant execute on function public.manager_login_candidates(text) to service_role"); expect(managerCodeSql).toContain("revoke select(access_code_hash"); });
   it("adds tenant-safe teams and employee management transactions",()=>{expect(employeeManagementSql).toContain("create table public.team_groups");expect(employeeManagementSql).toContain("create table public.employee_team_memberships");expect(employeeManagementSql).toContain("enforce_employee_team_tenant");for(const fn of ["manager_create_employee","manager_reset_employee_pin","manager_set_employee_assignments","manager_update_employee_profile","manager_save_team_group"])expect(employeeManagementSql).toContain(`grant execute on function public.${fn}`);});
   it("keeps PIN management server-only and audited",()=>{expect(employeeManagementSql).toContain("to service_role");expect(employeeManagementSql).toContain("EMPLOYEE_PIN_RESET");expect(employeeManagementSql).toContain("sessions_revoked");expect(employeeManagementSql).not.toContain("jsonb_build_object('pin_hash'");});
+  it("makes universal support access time-bound and immutable",()=>{expect(platformSupportSql).toContain("expires_at<=granted_at+interval '1 hour'");expect(platformSupportSql).toContain("p_minutes integer default 30");expect(platformSupportSql).toContain("SUPPORT_ACCESS_STARTED");expect(platformSupportSql).toContain("platform_audit_logs are append-only");expect(platformSupportSql).not.toContain("insert into public.company_users");});
 });
